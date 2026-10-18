@@ -8,8 +8,6 @@
 # Terraform state files
 *.tfstate
 *.tfstate.*
-terraform.tfstate
-terraform.tfstate.backup
 
 # Terraform crash logs
 crash.log
@@ -34,16 +32,12 @@ terraform.rc
 # Terraform Variable Files / Secrets
 # ============================================================
 
-# Variable files may contain secrets
+# Variable files may contain secrets or environment-specific values
 *.tfvars
 *.tfvars.json
 
-# Main variable values file
-terraform.tfvars
-
-# Optional secret-specific files
-*.secret.tfvars
-*.secrets.tfvars
+# Allow a safe example variable file to be committed
+!*.tfvars.example
 
 
 # ============================================================
