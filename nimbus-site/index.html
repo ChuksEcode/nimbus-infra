@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nimbus Compute - Pragmatic DevOps Training & B2B Services</title>
+    <meta name="description" content="We help teams automate infrastructure, ship with CI/CD, and uplevel engineers with hands-on training. Azure, Terraform, GitHub Actions, and AKS expertise.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Sticky Navigation -->
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="assets/logo.svg" alt="Nimbus Compute" class="logo">
+                <span class="brand-text">Nimbus Compute</span>
+            </div>
+            <div class="nav-links">
+                <a href="#services" class="nav-link">Services</a>
+                <a href="#course" class="nav-link">Course</a>
+                <a href="#mentorship" class="nav-link">Mentorship</a>
+                <a href="#contact" class="nav-link nav-cta">Contact</a>
+            </div>
+            <button class="nav-toggle" aria-expanded="false" aria-label="Toggle navigation menu">
+                <span class="hamburger"></span>
+                <span class="hamburger"></span>
+                <span class="hamburger"></span>
+            </button>
+        </div>
+        <div class="nav-mobile" id="navMobile">
+            <a href="#services" class="nav-mobile-link">Services</a>
+            <a href="#course" class="nav-mobile-link">Course</a>
+            <a href="#mentorship" class="nav-mobile-link">Mentorship</a>
+            <a href="#contact" class="nav-mobile-link nav-cta">Contact</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-container">
+            <div class="hero-badge">
+                <span>Azure • Terraform • GitHub Actions • AKS</span>
+            </div>
+            <h1 class="hero-title">Pragmatic DevOps. Real Results.</h1>
+            <p class="hero-subtitle">We help teams automate infrastructure, ship with CI/CD, and uplevel engineers with hands-on training.</p>
+            <div class="hero-ctas">
+                <a href="#course" class="btn btn-primary">Explore the Course</a>
+                <a href="#services" class="btn btn-secondary">See Services</a>
+            </div>
+        </div>
+        <div class="hero-bg">
+            <div class="gradient-1"></div>
+            <div class="gradient-2"></div>
+        </div>
+    </section>
+
+    <!-- B2B Services Section -->
+    <section class="services" id="services">
+        <div class="container">
+            <h2 class="section-title">For Teams & B2B</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3 class="service-title">Infra as Code Bootstraps</h3>
+                    <p class="service-description">Get your Azure foundation right from day one with production-ready Terraform modules and remote state management.</p>
+                    <ul class="service-list">
+                        <li>Resource Groups, ACR, AKS, Key Vault setup</li>
+                        <li>Remote state configuration with Azure Storage</li>
+                        <li>Security best practices and RBAC</li>
+                    </ul>
+                </div>
+                <div class="service-card">
+                    <h3 class="service-title">CI/CD Acceleration</h3>
+                    <p class="service-description">Transform your deployment pipeline with automated builds, security scanning, and seamless Azure integration.</p>
+                    <ul class="service-list">
+                        <li>Build → Test → Scan → Deploy automation</li>
+                        <li>Azure Container Registry integration</li>
+                        <li>Key Vault secrets management</li>
+                    </ul>
+                </div>
+                <div class="service-card">
+                    <h3 class="service-title">Cloud Cost & Readiness</h3>
+                    <p class="service-description">Optimize spending and establish governance with budgets, tagging strategies, and security guardrails.</p>
+                    <ul class="service-list">
+                        <li>Cost monitoring and budget alerts</li>
+                        <li>Resource tagging and governance</li>
+                        <li>Security and compliance guardrails</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Course Section -->
+    <section class="course" id="course">
+        <div class="container">
+            <h2 class="section-title">Nimbus Compute DevOps Course</h2>
+            <div class="course-content">
+                <div class="course-curriculum">
+                    <ul class="curriculum-list">
+                        <li>Azure fundamentals (subs, RG, VMs, networking, storage)</li>
+                        <li>Linux + Git essentials</li>
+                        <li>Terraform for app infra (RG, ACR, AKS, KV, state)</li>
+                        <li>CI/CD with GitHub Actions → ACR → AKS</li>
+                        <li>Bonus: Kubernetes basics (deployments & services)</li>
+                    </ul>
+                </div>
+                <div class="course-highlight">
+                    <h3 class="highlight-title">What you'll build</h3>
+                    <p class="highlight-description">End-to-end pipeline: commit → build → scan → push → deploy. 10–12 weeks, cohort-based.</p>
+                    <a href="#contact" class="btn btn-primary">Ask about Cohort Dates</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mentorship Section -->
+    <section class="mentorship" id="mentorship">
+        <div class="container">
+            <h2 class="section-title">1:1 Mentorship</h2>
+            <div class="mentorship-grid">
+                <div class="mentorship-tile">
+                    <h3 class="tile-title">Career Track</h3>
+                    <p class="tile-description">Strategic guidance for DevOps career advancement and skill development planning.</p>
+                </div>
+                <div class="mentorship-tile">
+                    <h3 class="tile-title">Project Coaching</h3>
+                    <p class="tile-description">Hands-on support for real-world infrastructure and automation projects.</p>
+                </div>
+                <div class="mentorship-tile">
+                    <h3 class="tile-title">Weekly Accountability</h3>
+                    <p class="tile-description">Regular check-ins to keep you on track with your learning and career goals.</p>
+                </div>
+            </div>
+            <div class="mentorship-cta">
+                <h3 class="cta-title">Ready to move?</h3>
+                <a href="#contact" class="btn btn-primary">Book a call</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">Contact</h2>
+            <div class="contact-content">
+                <p class="contact-description">Tell us about your team or your learning goals.</p>
+                <form class="contact-form" id="contactForm">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">© <span id="currentYear"></span> Nimbus Compute</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
