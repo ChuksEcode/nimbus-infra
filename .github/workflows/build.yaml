@@ -2,46 +2,82 @@ name: CI/CD to AKS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+
+# Coordinate with the manual management workflows.
+concurrency:
+  group: nimbus-environment
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Azure Login
-      uses: azure/login@v2
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Derive ACR_NAME from login server secret (foo.azurecr.io -> foo)
-    - name: Resolve ACR name
-      id: acr
-      run: |
-        ACR_LOGIN_SERVER="${{ secrets.AZURE_CONTAINER_REGISTRY }}"
-        ACR_NAME="$(echo "$ACR_LOGIN_SERVER" | cut -d. -f1)"
-        echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER" >> $GITHUB_ENV
-        echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+      # Convert the login server into the registry name.
+      - name: Resolve ACR name
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+        run: |
+          ACR_NAME="$(echo "$ACR_LOGIN_SERVER" | cut -d. -f1)"
+          echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER" >> "$GITHUB_ENV"
+          echo "ACR_NAME=$ACR_NAME" >> "$GITHUB_ENV"
 
-    - name: Login to ACR
-      run: az acr login --name "$ACR_NAME"
+      - name: Login to ACR
+        run: az acr login --name "$ACR_NAME"
 
-    - name: Build image
-      run: |
-        IMAGE="${{ env.ACR_LOGIN_SERVER }}/nimbus-site:${{ github.sha }}"
-        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-        docker build -t "$IMAGE" ./nimbus-site
+      - name: Build image
+        run: |
+          IMAGE="${ACR_LOGIN_SERVER}/nimbus-site:${GITHUB_SHA}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build -t "$IMAGE" ./nimbus-site
 
-    - name: Push image
-      run: docker push "${{ env.IMAGE }}"
+      - name: Push image
+        run: docker push "$IMAGE"
 
-    - name: Get AKS credentials
-      run: az aks get-credentials -g "${{ secrets.AZURE_RESOURCE_GROUP }}" -n "${{ secrets.AZURE_AKS_CLUSTER }}" --overwrite-existing
+      - name: Get AKS credentials
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AKS_CLUSTER: ${{ secrets.AZURE_AKS_CLUSTER }}
+        run: |
+          az aks get-credentials \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$AKS_CLUSTER" \
+            --overwrite-existing
 
-    - name:  Deploy to AKS and Roll out new image
-      run: |
-        kubectl set image deployment/nimbus-site nimbus-site="${{ env.IMAGE }}"
-        kubectl rollout status deployment/nimbus-site --timeout=300s
+      - name: Deploy to AKS and wait for rollout
+        run: |
+          kubectl set image deployment/nimbus-site \
+            nimbus-site="$IMAGE" \
+            --namespace default
+
+          kubectl rollout status deployment/nimbus-site \
+            --namespace default \
+            --timeout=300s
+
+      - name: Show deployment results
+        run: |
+          echo "Checking the application Deployment..."
+          kubectl get deployment nimbus-site --namespace default
+
+          echo "Showing the deployed container image..."
+          kubectl get deployment nimbus-site \
+            --namespace default \
+            -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{" -> "}{.image}{"\n"}{end}'
+
+          echo "Checking application Pods..."
+          kubectl get pods \
+            --namespace default \
+            -l app=nimbus-site \
+            -o wide
+
+          echo "Showing the Service and external IP..."
+          kubectl get svc nimbus-site --namespace default
