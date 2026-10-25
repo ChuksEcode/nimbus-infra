@@ -1,0 +1,173 @@
+# Manual infrastructure lifecycle. Read README_NIMBUS_WORKFLOWS.md before enabling.
+name: Nimbus infrastructure management
+'on':
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Choose a Terraform operation
+        required: true
+        default: plan
+        type: choice
+        options:
+        - plan
+        - create-or-update
+        - destroy
+      confirmation:
+        description: For destroy only, type the exact resource group name (nimbus-rg)
+        required: false
+        default: ''
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: nimbus-environment
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+    working-directory: terraform
+env:
+  TF_IN_AUTOMATION: 'true'
+  TF_INPUT: 'false'
+  ARM_USE_AZUREAD: 'true'
+  ARM_CLIENT_ID: ${{ fromJSON(secrets.AZURE_SETUP_CREDENTIALS).clientId }}
+  ARM_CLIENT_SECRET: ${{ fromJSON(secrets.AZURE_SETUP_CREDENTIALS).clientSecret }}
+  ARM_TENANT_ID: ${{ fromJSON(secrets.AZURE_SETUP_CREDENTIALS).tenantId }}
+  ARM_SUBSCRIPTION_ID: ${{ fromJSON(secrets.AZURE_SETUP_CREDENTIALS).subscriptionId }}
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+  TF_PLAN_ENCRYPTION_KEY: ${{ secrets.TF_PLAN_ENCRYPTION_KEY }}
+  TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
+  TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
+  TF_BACKEND_CONTAINER: ${{ vars.TF_BACKEND_CONTAINER }}
+  TF_BACKEND_KEY: ${{ vars.TF_BACKEND_KEY }}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    steps:
+    - name: Checkout the exact run commit
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+    - name: Validate workflow configuration
+      env:
+        OPERATION: ${{ inputs.operation }}
+        CONFIRMATION: ${{ inputs.confirmation }}
+        TERRAFORM_VERSION: ${{ vars.TERRAFORM_VERSION }}
+      run: |
+        set -euo pipefail
+        [ "$GITHUB_REF" = refs/heads/main ] || { echo 'Run from main.'; exit 1; }
+        : "${RESOURCE_GROUP:?AZURE_RESOURCE_GROUP is missing}"
+        : "${TERRAFORM_VERSION:?Set the TERRAFORM_VERSION repository variable}"
+        : "${TF_PLAN_ENCRYPTION_KEY:?Set the TF_PLAN_ENCRYPTION_KEY repository secret}"
+        [ -f .terraform.lock.hcl ] || { echo 'Commit terraform/.terraform.lock.hcl first.'; exit 1; }
+        if [ "$OPERATION" = destroy ] && [ "$CONFIRMATION" != "$RESOURCE_GROUP" ]; then
+          echo 'For destroy, confirmation must exactly match the Nimbus resource group name.'
+          exit 1
+        fi
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ vars.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+    - name: Azure infrastructure login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_SETUP_CREDENTIALS }}
+    - name: Check backend and initialise Terraform
+      run: bash ../scripts/nimbus-terraform-init.sh
+    - name: Check Terraform formatting
+      run: terraform fmt -check -recursive
+    - name: Validate Terraform configuration
+      run: terraform validate
+    - name: Create and check Terraform plan
+      id: plan
+      env:
+        OPERATION: ${{ inputs.operation }}
+      run: |
+        set -euo pipefail
+        ARGS=(-input=false -lock-timeout=5m -detailed-exitcode -out=tfplan)
+        if [ "$OPERATION" = destroy ]; then ARGS+=(-destroy); fi
+        set +e
+        terraform plan "${ARGS[@]}"
+        STATUS=$?
+        set -e
+        if [ "$STATUS" != 0 ] && [ "$STATUS" != 2 ]; then exit "$STATUS"; fi
+        terraform show -json tfplan | python3 ../scripts/nimbus-check-plan.py
+        if [ "$STATUS" = 2 ]; then
+          echo 'has_changes=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'has_changes=false' >> "$GITHUB_OUTPUT"
+        fi
+        {
+          echo '## Terraform plan completed'
+          echo "Operation: $OPERATION"
+          echo "Commit: $GITHUB_SHA"
+          echo 'Review the Create and check Terraform plan step before approving infrastructure changes.'
+          echo 'Destroy affects every resource tracked by this configuration/workspace; it is not restricted by the confirmation text.'
+        } >> "$GITHUB_STEP_SUMMARY"
+    - name: Encrypt saved plan
+      if: inputs.operation != 'plan' && steps.plan.outputs.has_changes == 'true'
+      run: python3 ../scripts/nimbus-plan-crypto.py encrypt
+    - name: Upload encrypted plan
+      if: inputs.operation != 'plan' && steps.plan.outputs.has_changes == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nimbus-plan-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          terraform/tfplan.enc
+          terraform/tfplan.mac
+        retention-days: 1
+        if-no-files-found: error
+    - name: Remove temporary files
+      if: always()
+      run: rm -f ci.auto.tfvars tfplan tfplan.enc tfplan.mac
+  apply:
+    needs: plan
+    if: inputs.operation != 'plan' && needs.plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: nimbus-infrastructure
+    steps:
+    - name: Checkout the exact run commit
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ vars.TERRAFORM_VERSION }}
+        terraform_wrapper: false
+    - name: Azure infrastructure login
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_SETUP_CREDENTIALS }}
+    - name: Check backend and initialise Terraform
+      run: bash ../scripts/nimbus-terraform-init.sh
+    - name: Download the encrypted plan from this run
+      uses: actions/download-artifact@v4
+      with:
+        name: nimbus-plan-${{ github.run_id }}-${{ github.run_attempt }}
+        path: terraform
+    - name: Apply the reviewed saved plan
+      env:
+        OPERATION: ${{ inputs.operation }}
+      run: |
+        set -euo pipefail
+        python3 ../scripts/nimbus-plan-crypto.py decrypt
+        terraform show -json tfplan | python3 ../scripts/nimbus-check-plan.py
+        # Apply exactly the saved plan, including a saved destroy plan.
+        terraform apply -input=false -lock-timeout=5m tfplan
+        {
+          echo '## Infrastructure operation completed'
+          echo "Operation: $OPERATION"
+          echo 'Create/update: confirm deployment identity and AKS-to-ACR access before building the application.'
+          echo 'Destroy: external Terraform state storage was retained and may still incur charges.'
+        } >> "$GITHUB_STEP_SUMMARY"
+    - name: Remove temporary files
+      if: always()
+      run: rm -f ci.auto.tfvars tfplan tfplan.enc tfplan.mac

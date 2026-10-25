@@ -62,6 +62,7 @@ override.tf.json
 *.key
 *.pfx
 *.p12
+*.sh
 
 
 # ============================================================
@@ -91,7 +92,7 @@ azureProfile.json
 .DS_Store
 Thumbs.db
 desktop.ini
-
+setup-monitoring.sh
 
 # ============================================================
 # Logs
