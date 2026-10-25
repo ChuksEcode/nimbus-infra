@@ -1,4 +1,4 @@
-name: CI/CD to AKS
+name: CI/CD to AKS Pipeline
 
 on:
   push:
